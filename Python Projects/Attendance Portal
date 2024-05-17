@@ -1,0 +1,120 @@
+import datetime
+
+class Person:
+    def __init__(self, name):
+        self.name = name
+
+class Staff(Person):
+    def __init__(self, name):
+        super().__init__(name)
+        self.attendance = {}
+        self.in_office = False
+        self.on_leave = False
+        self.leave_days = 0
+
+    def mark_attendance(self):
+        if not self.on_leave:
+            if not self.in_office:
+                now = datetime.datetime.now()
+                self.attendance[now] = "Present"
+                print(f"{self.name}'s attendance marked at {now}")
+                self.in_office = True
+            else:
+                print("You are already in the office.")
+        else:
+            print("You are on leave. Cannot mark attendance.")
+
+    def leave_office(self):
+        if self.in_office:
+            now = datetime.datetime.now()
+            print(f"{self.name} left the office at {now}")
+            self.in_office = False
+            self.calculate_office_time(now)
+        else:
+            print("You are not currently in the office.")
+
+    def calculate_office_time(self, left_time):
+        office_entry_times = sorted(self.attendance.keys())
+        last_entry = None
+        total_office_time = datetime.timedelta()
+
+        for entry_time in office_entry_times:
+            if self.attendance[entry_time] == "Present":
+                if last_entry is not None:
+                    total_office_time += entry_time - last_entry
+                last_entry = entry_time
+
+        if last_entry is not None:
+            total_office_time += left_time - last_entry
+
+        print(f"Total office time for {self.name}: {total_office_time}")
+
+    def apply_leave(self, days):
+        self.on_leave = True
+        self.leave_days = days
+        print(f"Your leave application for {days} days has been accepted.")
+
+    def cancel_leave(self):
+        if self.on_leave:
+            self.on_leave = False
+            self.leave_days -= 1
+            if self.leave_days == 0:
+                print("Your leave has been canceled.")
+        else:
+            print("You haven't applied for leave.")
+
+class Student(Person):
+    def __init__(self, name):
+        super().__init__(name)
+        self.attendance = {}
+
+    def mark_attendance(self):
+        now = datetime.datetime.now()
+        self.attendance[now] = "Present"
+        print(f"{self.name}'s attendance marked at {now}")
+        self.check_punctuality(now)
+
+    def check_punctuality(self, attendance_time):
+        if attendance_time.time() < datetime.time(8, 0):
+            print("Punctual!")
+        elif attendance_time.time() < datetime.time(9, 0):
+            print("Late!")
+        else:
+            print("Very Late!")
+
+# Testing the implementation
+if __name__ == "__main__":
+    user_type = input("Are you a student or a teacher? ").lower()
+    name = input("Enter your name: ")
+
+    if user_type == "teacher":
+        teacher = Staff(name)
+        while True:
+            print("\nOptions:")
+            print("1. Mark Attendance")
+            print("2. Leave Office")
+            print("3. Apply for Leave")
+            print("4. Cancel Leave")
+            print("5. Exit")
+
+            choice = input("Enter your choice: ")
+
+            if choice == "1":
+                teacher.mark_attendance()
+            elif choice == "2":
+                teacher.leave_office()
+            elif choice == "3":
+                days = int(input("Enter number of days for leave: "))
+                teacher.apply_leave(days)
+            elif choice == "4":
+                teacher.cancel_leave()
+            elif choice == "5":
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+    elif user_type == "student":
+        student = Student(name)
+        student.mark_attendance()
+    else:
+        print("Invalid user type.")
