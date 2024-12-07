@@ -1,0 +1,35 @@
+import soundfile as sf
+import numpy as np
+import librosa
+
+def voice_detector(file_path):
+    # Load audio file
+    audio, sr = sf.read(file_path)
+
+    # Convert stereo to mono
+    if len(audio.shape) > 1:
+        audio = np.mean(audio, axis=1)
+
+    # Extract features
+    stft = np.abs(librosa.stft(audio))
+    spectral_centroids = librosa.feature.spectral_centroid(S=stft).ravel()
+
+    # Calculate mean and standard deviation of spectral centroids
+    mean_sc = np.mean(spectral_centroids)
+    std_sc = np.std(spectral_centroids)
+
+    # Set a threshold for voice detection
+    threshold = mean_sc + 2 * std_sc
+
+    # Check if the audio contains voice
+    if mean_sc > threshold:
+        return True
+    else:
+        return False
+
+# Example usage
+file_path = 'path/to/audio/file.wav'
+if voice_detector(file_path):
+    print("Voice detected!")
+else:
+    print("No voice detected.")
