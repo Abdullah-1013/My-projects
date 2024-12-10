@@ -1,4 +1,3 @@
-
 import numpy as np
 from tkinter import Tk, Label, Button, filedialog, StringVar  # Import StringVar
 from PIL import Image, ImageTk
