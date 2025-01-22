@@ -1,35 +1,64 @@
-import soundfile as sf
+import wave
 import numpy as np
-import librosa
+from sklearn.externals import joblib  # For loading pre-trained models
+from scipy.fftpack import fft
 
-def voice_detector(file_path):
-    # Load audio file
-    audio, sr = sf.read(file_path)
+# Load pre-trained models (these need to be trained separately)
+human_classifier = joblib.load('human_classifier.pkl')  # Classifies as man, woman, or child
+animal_classifier = joblib.load('animal_classifier.pkl')  # Classifies as domestic, wild, or hunter
+bird_classifier = joblib.load('bird_classifier.pkl')  # Classifies as domestic, wild, or hunter
 
-    # Convert stereo to mono
-    if len(audio.shape) > 1:
-        audio = np.mean(audio, axis=1)
+def extract_features(file_path):
+    """
+    Extracts audio features using scipy and wave.
+    :param file_path: Path to the audio file
+    :return: Feature vector
+    """
+    # Open the WAV file
+    with wave.open(file_path, 'r') as wav_file:
+        n_channels = wav_file.getnchannels()
+        frame_rate = wav_file.getframerate()
+        n_frames = wav_file.getnframes()
+        audio_data = wav_file.readframes(n_frames)
 
-    # Extract features
-    stft = np.abs(librosa.stft(audio))
-    spectral_centroids = librosa.feature.spectral_centroid(S=stft).ravel()
+    # Convert audio data to numpy array
+    audio_data = np.frombuffer(audio_data, dtype=np.int16)
 
-    # Calculate mean and standard deviation of spectral centroids
-    mean_sc = np.mean(spectral_centroids)
-    std_sc = np.std(spectral_centroids)
+    # Perform FFT to extract frequency domain features
+    fft_features = np.abs(fft(audio_data))[:len(audio_data)//2]
+    
+    # Normalize and compute basic statistics as feature vector
+    mean_feature = np.mean(fft_features)
+    std_feature = np.std(fft_features)
+    max_feature = np.max(fft_features)
+    min_feature = np.min(fft_features)
+    
+    return [mean_feature, std_feature, max_feature, min_feature]
 
-    # Set a threshold for voice detection
-    threshold = mean_sc + 2 * std_sc
-
-    # Check if the audio contains voice
-    if mean_sc > threshold:
-        return True
+def classify_voice(file_path):
+    """
+    Classifies the given audio file.
+    :param file_path: Path to the audio file
+    :return: Classification result
+    """
+    features = extract_features(file_path)
+    
+    # First, detect if it's human, animal, or bird
+    main_classifier = joblib.load('main_classifier.pkl')  # Main classifier
+    category = main_classifier.predict([features])[0]
+    
+    if category == 'human':
+        sub_category = human_classifier.predict([features])[0]
+        print(f"The voice belongs to a human: {sub_category.capitalize()}")
+    elif category == 'animal':
+        sub_category = animal_classifier.predict([features])[0]
+        print(f"The voice belongs to an animal: {sub_category.capitalize()}")
+    elif category == 'bird':
+        sub_category = bird_classifier.predict([features])[0]
+        print(f"The voice belongs to a bird: {sub_category.capitalize()}")
     else:
-        return False
+        print("The voice does not match any known category.")
 
 # Example usage
-file_path = 'path/to/audio/file.wav'
-if voice_detector(file_path):
-    print("Voice detected!")
-else:
-    print("No voice detected.")
+audio_file = input("Enter the path to the audio file: ")
+classify_voice(audio_file)
